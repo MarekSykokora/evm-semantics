@@ -304,15 +304,19 @@ Note that `TEST` is sorted here so that key `"network"` comes before key `"pre"`
     rule <k> loadAccount _ { "code"    : ((CODE:String)     => #parseByteStack(CODE)),  _ } ... </k>
     rule <k> loadAccount _ { "storage" : ({ STORAGE:JSONs } => #parseMap({ STORAGE })), _ } ... </k>
 
-    rule <k> loadTransaction _ { "gasLimit" : (TG:String => #asWord(#parseByteStackRaw(TG))), _      } ... </k>
-    rule <k> loadTransaction _ { "gasPrice" : (TP:String => #asWord(#parseByteStackRaw(TP))), _      } ... </k>
-    rule <k> loadTransaction _ { "nonce"    : (TN:String => #asWord(#parseByteStackRaw(TN))), _      } ... </k>
-    rule <k> loadTransaction _ { "v"        : (TW:String => #asWord(#parseByteStackRaw(TW))), _      } ... </k>
-    rule <k> loadTransaction _ { "value"    : (TV:String => #asWord(#parseByteStackRaw(TV))), _      } ... </k>
-    rule <k> loadTransaction _ { "to"       : (TT:String => #asAccount(#parseByteStackRaw(TT))), _   } ... </k>
-    rule <k> loadTransaction _ { "data"     : (TI:String => #parseByteStackRaw(TI)), _               } ... </k>
-    rule <k> loadTransaction _ { "r"        : (TR:String => #padToWidth(32, #parseByteStackRaw(TR))), _ } ... </k>
-    rule <k> loadTransaction _ { "s"        : (TS:String => #padToWidth(32, #parseByteStackRaw(TS))), _ } ... </k>
+    rule <k> loadTransaction _ { "gasLimit"   : (TG:String => #asWord(#parseByteStackRaw(TG))), _      } ... </k>
+    rule <k> loadTransaction _ { "gasPrice"   : (TP:String => #asWord(#parseByteStackRaw(TP))), _      } ... </k>
+    rule <k> loadTransaction _ { "nonce"      : (TN:String => #asWord(#parseByteStackRaw(TN))), _      } ... </k>
+    rule <k> loadTransaction _ { "v"          : (TW:String => #asWord(#parseByteStackRaw(TW))), _      } ... </k>
+    rule <k> loadTransaction _ { "value"      : (TV:String => #asWord(#parseByteStackRaw(TV))), _      } ... </k>
+    rule <k> loadTransaction _ { "to"         : (TT:String => #asAccount(#parseByteStackRaw(TT))), _   } ... </k>
+    rule <k> loadTransaction _ { "data"       : (TI:String => #parseByteStackRaw(TI)), _               } ... </k>
+    rule <k> loadTransaction _ { "r"          : (TR:String => #padToWidth(32, #parseByteStackRaw(TR))), _ } ... </k>
+    rule <k> loadTransaction _ { "s"          : (TS:String => #padToWidth(32, #parseByteStackRaw(TS))), _ } ... </k>
+    rule <k> loadTransaction _ { "type"       : (TT:String => #asWord(#parseByteStackRaw(TT))), _      } ... </k>
+    rule <k> loadTransaction _ { "chainId"    : (TC:String => #asWord(#parseByteStackRaw(TC))), _      } ... </k>
+    rule <k> loadTransaction _ { "accessList" : ([ AL:JSONs ] => #parseAccessList([AL],.Map)), _       } ... </k>
+
 ```
 
 ### Checking State

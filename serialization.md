@@ -215,7 +215,20 @@ These parsers can interperet hex-encoded strings as `Int`s, `ByteArray`s, and `M
     syntax Int ::= #parseAddr ( String ) [function]
  // -----------------------------------------------
     rule #parseAddr(S) => #addr(#parseHexWord(S))
-```
+
+    syntax Map ::= #parseAccessListElement ( JSON ) [function]
+    syntax Map ::= #parseAccessList ( JSON , Map ) [function]
+ // ---------------------------------------------------------
+    rule #parseAccessListElement ( {KEY1 : (ADDR:String), KEY2 : (VALUES:List)} ) => #parseAddr(ADDR) |-> #parseStringList(VALUES, .List) requires KEY1 ==K "address" andBool KEY2 ==K "storageKeys"
+
+    rule #parseAccessList ( [.JSONs], RESULT )           => RESULT
+    rule #parseAccessList ( [{ _ } #as J, REST], RESULT) => #parseAccessList([REST], RESULT #parseAccessListElement(J))
+
+    syntax List ::= #parseStringList ( List , List ) [function]
+ // -----------------------------------------------------------
+    rule #parseStringList (.List, RESULT)                  => RESULT
+    rule #parseStringList ( ListItem(V:String) VS, RESULT) => #parseStringList(VS, ListItem(#parseHexWord(V)) RESULT)
+ ```
 
 Unparsing
 ---------
@@ -421,10 +434,12 @@ Decoding
 ```k
     syntax JSON ::= #rlpDecode(String)               [function]
                   | #rlpDecode(String, LengthPrefix) [function, klabel(#rlpDecodeAux)]
+                  | #rlpDecodeTransaction(String)    [function]
  // ----------------------------------------------------------------------------------
     rule #rlpDecode(STR) => #rlpDecode(STR, #decodeLengthPrefix(STR, 0))
     rule #rlpDecode(STR,  #str( LEN, POS)) => substrString(STR, POS, POS +Int LEN)
     rule #rlpDecode(STR, #list(_LEN, POS)) => [#rlpDecodeList(STR, POS)]
+    rule #rlpDecode(STR,   #tx(TYPE, POS)) => [{"txType":TYPE}, #rlpDecodeList(STR, POS)]
 
     syntax JSONs ::= #rlpDecodeList(String, Int)               [function]
                    | #rlpDecodeList(String, Int, LengthPrefix) [function, klabel(#rlpDecodeListAux)]
@@ -433,7 +448,7 @@ Decoding
     rule #rlpDecodeList(  _,   _) => .JSONs [owise]
     rule #rlpDecodeList(STR, POS, _:LengthPrefixType(L, P)) => #rlpDecode(substrString(STR, POS, L +Int P)) , #rlpDecodeList(STR, L +Int P)
 
-    syntax LengthPrefixType ::= "#str" | "#list"
+    syntax LengthPrefixType ::= "#str" | "#list" | "#tx"
     syntax LengthPrefix ::= LengthPrefixType "(" Int "," Int ")"
                           | #decodeLengthPrefix ( String , Int )                                [function]
                           | #decodeLengthPrefix ( String , Int , Int )                          [function, klabel(#decodeLengthPrefixAux)]
@@ -447,9 +462,17 @@ Decoding
     rule #decodeLengthPrefix(STR, START, B0) => #decodeLengthPrefixLength(#str, STR, START, B0)  requires B0 >=Int (128 +Int 56) andBool B0 <Int 192
     rule #decodeLengthPrefix(  _, START, B0) => #list(B0 -Int 192, START +Int 1)                 requires B0 >=Int 192 andBool B0 <Int 192 +Int 56
     rule #decodeLengthPrefix(STR, START, B0) => #decodeLengthPrefixLength(#list, STR, START, B0) [owise]
+    rule #decodeLengthPrefix(STR, START, B0) => #tx(B0, START +Int 2)
+      requires B0 <Int 128
+       andBool ordChar(substrString(STR, START +Int 1, START +Int 2)) >=Int 192
+       andBool ordChar(substrString(STR, START +Int 1, START +Int 2)) <Int 192 +Int 56
+    rule #decodeLengthPrefix(STR, START, BO) => #decodeLengthPrefixLength(#tx, STR, START +Int 1, B0)
+      requires B0 <Int 128
+       andBool ordChar(substrString(STR, START +Int 1, START +Int 2)) >=Int 192 +Int 56
 
-    rule #decodeLengthPrefixLength(#str,  STR, START, B0) => #decodeLengthPrefixLength(#str,  START, B0 -Int 128 -Int 56 +Int 1, #asWord(#parseByteStackRaw(substrString(STR, START +Int 1, START +Int 1 +Int (B0 -Int 128 -Int 56 +Int 1)))))
-    rule #decodeLengthPrefixLength(#list, STR, START, B0) => #decodeLengthPrefixLength(#list, START, B0 -Int 192 -Int 56 +Int 1, #asWord(#parseByteStackRaw(substrString(STR, START +Int 1, START +Int 1 +Int (B0 -Int 192 -Int 56 +Int 1)))))
+    rule #decodeLengthPrefixLength(#str,  STR, START, B0) =>     #decodeLengthPrefixLength(#str,  START, B0 -Int 128 -Int 56 +Int 1, #asWord(#parseByteStackRaw(substrString(STR, START +Int 1, START +Int 1 +Int (B0 -Int 128 -Int 56 +Int 1)))))
+    rule #decodeLengthPrefixLength(#list, STR, START, B0) =>     #decodeLengthPrefixLength(#list, START, B0 -Int 192 -Int 56 +Int 1, #asWord(#parseByteStackRaw(substrString(STR, START +Int 1, START +Int 1 +Int (B0 -Int 192 -Int 56 +Int 1)))))
+    rule #decodeLengthPrefixLength(#tx,   STR, START, TXTYPE) => #decodeLengthPrefixLength(#tx,   START, ordChar(substrString(STR, START, START +Int 1)) -Int 192 -Int 56 +Int 1, TXTYPE)
     rule #decodeLengthPrefixLength(TYPE, START, LL, L) => TYPE(L, START +Int 1 +Int LL)
 ```
 
